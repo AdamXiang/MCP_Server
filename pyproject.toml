@@ -3,6 +3,8 @@ name = "mcp-server"
 version = "0.1.0"
 description = "A Python MCP server that lets AI agents manage tasks in SQLite, built with FastMCP and LangChain."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "Adam" }
 ]
