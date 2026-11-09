@@ -33,6 +33,7 @@ flowchart LR
 │   └── langchain_client.py  # A terminal chat with a Claude agent
 ├── .env.template            # The environment variable that the agent needs
 ├── .mcp.json                # The server address for MCP hosts
+├── LICENSE                  # The MIT License
 ├── pyproject.toml           # Project metadata and dependencies
 └── uv.lock                  # Exact dependency versions
 ```
@@ -120,20 +121,20 @@ All the columns in the `tasks` table have the type `TEXT`, and none of them can 
 | `priority` | The importance of the task |
 | `status` | The progress of the task |
 
-## Known limitations
+## Future work
 
-These limitations exist in the current code. Each one is a good first issue.
+I found these problems by running the current code. None of them is fixed yet. The list starts with the problems that a new user meets first.
 
-| Limitation | Effect | Possible fix |
+| Problem | What happens now | Planned fix |
 | --- | --- | --- |
-| The server does not create the database | Before you run step 2, tool calls fail with `unable to open database file` | Call `init_database()` when the server starts |
-| `database.py` always inserts the task with the ID `"1"` | A second run stops with `UNIQUE constraint failed`. Existing data is not changed | Move the sample task to a separate script or skip it if it exists |
-| `server.py` calls `create_task` after `mcp.run()` | Each Ctrl+C adds a task with the title `second task` | Delete that line |
-| `create_task` uses the status `"to do"`, but `update_task_status` accepts `"todo"` | The database has two spellings of one status | Use one spelling, defined in one place |
-| `priority` accepts any string | A caller can save a value such as `"urgent"` | Use a `Literal` type, like `status` does |
-| The `mcp-server` command prints a greeting | The command does not start the server | Point the script at the server, or delete it |
-| `pyproject.toml` lists `asyncio` and `uuid` | These PyPI packages are not needed, because the imports use the Python standard library | Remove them from the dependencies |
-| The project has no automated tests | You check changes by running `client.py` | Add `pytest` tests with a temporary database |
+| The server does not create the database | Before you run step 2, tool calls fail with `unable to open database file` | Call `init_database()` before `mcp.run()` in `server.py`. Repeated calls are safe because the function uses `CREATE TABLE IF NOT EXISTS` |
+| `server.py` calls `create_task` after `mcp.run()` | Each Ctrl+C adds a task with the title `second task` | Delete the `create_task` line. It has no purpose in the server |
+| `create_task` uses the status `"to do"`, but `update_task_status` accepts `"todo"` | The database has two spellings of one status, and a caller cannot set a task back to `"to do"` | Define `TaskStatus = Literal["todo", "in progress", "done"]` once, and use it in both tools. Change `create_task` to `"todo"`, and run `UPDATE tasks SET status = 'todo' WHERE status = 'to do'` on existing data |
+| `database.py` always inserts the task with the ID `"1"` | A second run stops with `UNIQUE constraint failed`. Existing data is not changed | Use `INSERT OR IGNORE` for the sample task, so that the module is safe to run again |
+| `priority` accepts any string | A caller can save a value such as `"urgent"` | Define `TaskPriority = Literal["low", "medium", "high"]`, and use it as the type of the `priority` argument. FastMCP then rejects other values |
+| The `mcp-server` command prints a greeting | The command does not start the server | Add a `main()` function to `server.py` that calls `mcp.run()`. Set the script to `mcp_server.server:main`, and delete the placeholder in `__init__.py` |
+| `pyproject.toml` lists `asyncio` and `uuid` | These PyPI packages are not needed, because the imports use the Python standard library | Run `uv remove asyncio uuid` |
+| The project has no automated tests | You check changes by running `client.py` by hand, and the regressions above can return | Add `pytest` tests that point `database_path` at a `tmp_path` database and call the tools through an in-memory `Client(mcp)`. Write one test for each fix above |
 
 ## Technologies
 
@@ -146,3 +147,7 @@ These limitations exist in the current code. Each one is a good first issue.
 ## Acknowledgments
 
 The idea and the structure of this project come from the video [Build MCP Server for AI application (Full Project, step-by-step)](https://www.youtube.com/watch?v=hZ-Pb8JkPEw).
+
+## License
+
+This project uses the [MIT License](LICENSE).
